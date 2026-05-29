@@ -8,6 +8,7 @@ use App\Models\Organization;
 use App\Events\TaskCreated;
 use App\Events\TaskUpdated;
 use App\Events\TaskDeleted;
+use App\Events\TasksReordered;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -173,11 +174,21 @@ class TaskController extends Controller
             'tasks.*.sort_order' => 'required|integer',
         ]);
 
+        $updatedTasks = [];
+
         foreach ($validated['tasks'] as $item) {
             Task::forOrganization($orgId)
                 ->where('id', $item['id'])
                 ->update(['sort_order' => $item['sort_order']]);
+
+            $updatedTasks[] = [
+                'id' => $item['id'],
+                'sort_order' => $item['sort_order'],
+            ];
         }
+
+        // Broadcast reorder event for real-time updates
+        broadcast(new TasksReordered($orgId, $updatedTasks));
 
         return response()->json(['message' => 'Tasks reordered successfully']);
     }
