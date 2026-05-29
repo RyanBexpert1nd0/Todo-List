@@ -22,7 +22,7 @@ export default function Home() {
           </p>
 
           <div className="mt-10 flex items-center justify-center gap-4">
-            <Link href="/tasks">
+            <Link href="/dashboard">
               <Button size="lg" className="h-12 px-8 text-base shadow-violet-500/25">
                 Go to App
                 <ArrowRight className="ml-2 h-4 w-4" />
