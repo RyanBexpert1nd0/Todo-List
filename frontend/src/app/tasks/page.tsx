@@ -10,6 +10,7 @@ import { API_BASE_URL } from "@/lib/constants"
 import { Button } from "@/components/ui/button"
 import { TaskCard } from "@/components/tasks/task-card"
 import { TaskModal } from "@/components/tasks/task-modal"
+import { useEcho } from "@/lib/use-echo"
 
 // Temporary hardcoded org ID until Clerk Org is fully set up
 const FALLBACK_ORG_ID = "org_placeholder_123"
@@ -18,9 +19,35 @@ export default function TasksPage() {
   const { getToken, orgId } = useAuth()
   const currentOrgId = orgId || FALLBACK_ORG_ID
   const queryClient = useQueryClient()
+  const echo = useEcho()
   
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTask, setEditingTask] = useState<Task | undefined>()
+
+  // Listen to Reverb WebSockets for real-time updates
+  useEffect(() => {
+    if (!echo) return
+
+    const channel = echo.private(`org.${currentOrgId}`)
+    
+    channel.listen(".TaskCreated", () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", currentOrgId] })
+    })
+    
+    channel.listen(".TaskUpdated", () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", currentOrgId] })
+    })
+
+    channel.listen(".TaskDeleted", () => {
+      queryClient.invalidateQueries({ queryKey: ["tasks", currentOrgId] })
+    })
+
+    return () => {
+      channel.stopListening(".TaskCreated")
+      channel.stopListening(".TaskUpdated")
+      channel.stopListening(".TaskDeleted")
+    }
+  }, [echo, currentOrgId, queryClient])
 
   const fetchTasks = async (): Promise<Task[]> => {
     const token = await getToken()

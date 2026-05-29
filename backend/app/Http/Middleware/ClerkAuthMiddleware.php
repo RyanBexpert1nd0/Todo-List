@@ -5,14 +5,15 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Firebase\JWT\CachedKeySet;
+use GuzzleHttp\Client;
+use GuzzleHttp\Psr7\HttpFactory;
+use Illuminate\Support\Facades\Cache;
 
 class ClerkAuthMiddleware
 {
-    /**
-     * Handle an incoming request.
-     *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
-     */
     public function handle(Request $request, Closure $next): Response
     {
         $token = $request->bearerToken();
@@ -21,25 +22,57 @@ class ClerkAuthMiddleware
             return response()->json(['message' => 'Unauthorized: Missing token'], 401);
         }
 
-        // For now, we will decode the token to get the user ID without verifying the signature.
-        // In production, you MUST verify the signature using Clerk's JWKS or use a library like firebase/php-jwt.
         try {
-            $tokenParts = explode('.', $token);
-            if (count($tokenParts) !== 3) {
-                throw new \Exception('Invalid token format');
+            // Check if JWKS URL is provided, e.g., https://clerk.yourdomain.com/.well-known/jwks.json
+            $jwksUrl = env('CLERK_JWKS_URL');
+
+            if ($jwksUrl) {
+                // Proper Verification with JWKS (Requires firebase/php-jwt and guzzlehttp/guzzle)
+                $httpClient = new Client();
+                $httpFactory = new HttpFactory();
+                $cacheItemPool = Cache::psr16();
+                
+                $jwks = new CachedKeySet(
+                    $jwksUrl,
+                    $httpClient,
+                    $httpFactory,
+                    $cacheItemPool,
+                    300, // cache 5 minutes
+                    true
+                );
+
+                $decoded = JWT::decode($token, $jwks);
+                $userId = $decoded->sub;
+            } else {
+                // Fallback Development Mode: Decode without verification if JWKS_URL is missing
+                // IMPORTANT: Do not use this in production!
+                $tokenParts = explode('.', $token);
+                if (count($tokenParts) !== 3) {
+                    throw new \Exception('Invalid token format');
+                }
+
+                $payload = json_decode(base64_decode($tokenParts[1]), true);
+                if (!$payload || !isset($payload['sub'])) {
+                    throw new \Exception('Invalid token payload');
+                }
+                
+                $userId = $payload['sub'];
             }
 
-            $payload = json_decode(base64_decode($tokenParts[1]), true);
+            // Bind user ID to request
+            $request->headers->set('X-Clerk-User-Id', $userId);
 
-            if (!$payload || !isset($payload['sub'])) {
-                throw new \Exception('Invalid token payload');
+            // Optional: Find user in DB and authenticate them via Laravel Auth guard
+            $user = \App\Models\User::where('clerk_id', $userId)->first();
+            if ($user) {
+                \Illuminate\Support\Facades\Auth::login($user);
             }
-
-            // Set the Clerk User ID in the request headers or attributes for controllers to use
-            $request->headers->set('X-Clerk-User-Id', $payload['sub']);
 
         } catch (\Exception $e) {
-            return response()->json(['message' => 'Unauthorized: Invalid token'], 401);
+            return response()->json([
+                'message' => 'Unauthorized: Invalid token',
+                'error' => $e->getMessage()
+            ], 401);
         }
 
         return $next($request);

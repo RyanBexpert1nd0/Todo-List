@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Task;
 use App\Models\Organization;
+use App\Events\TaskCreated;
+use App\Events\TaskUpdated;
+use App\Events\TaskDeleted;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -82,7 +85,10 @@ class TaskController extends Controller
             'sort_order'      => $maxOrder + 1000,
         ]);
 
-        return response()->json($task->load(['creator', 'assignee', 'category']), 201);
+        $task->load(['creator', 'assignee', 'category']);
+        broadcast(new TaskCreated($task));
+
+        return response()->json($task, 201);
     }
 
     /**
@@ -118,7 +124,10 @@ class TaskController extends Controller
 
         $task->update($validated);
 
-        return response()->json($task->load(['creator', 'assignee', 'category']));
+        $task->load(['creator', 'assignee', 'category']);
+        broadcast(new TaskUpdated($task));
+
+        return response()->json($task);
     }
 
     /**
@@ -128,6 +137,8 @@ class TaskController extends Controller
     {
         $task = Task::forOrganization($orgId)->findOrFail($id);
         $task->delete();
+
+        broadcast(new TaskDeleted($id, $orgId));
 
         return response()->json(['message' => 'Task deleted successfully']);
     }
@@ -145,7 +156,10 @@ class TaskController extends Controller
             $task->update(['status' => 'done', 'completed_at' => now()]);
         }
 
-        return response()->json($task->fresh(['creator', 'assignee', 'category']));
+        $task->load(['creator', 'assignee', 'category']);
+        broadcast(new TaskUpdated($task));
+
+        return response()->json($task);
     }
 
     /**
