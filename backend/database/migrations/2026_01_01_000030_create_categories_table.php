@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('categories', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('organization_id');
+            $table->string('organization_id');
             $table->string('name');
             $table->string('color', 7)->default('#6366f1'); // hex color
             $table->timestamps();

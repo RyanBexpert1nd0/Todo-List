@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('tasks', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('organization_id');
+            $table->string('organization_id');
             $table->uuid('created_by');
             $table->uuid('assigned_to')->nullable();
             $table->uuid('parent_task_id')->nullable(); // for recurring tasks

@@ -140,10 +140,10 @@ export default function TasksPage() {
     if (tasks) setOrderedTasks(tasks)
   }, [tasks])
 
-  // ─── Fetch categories (for filter + modal) ──────────────────────────────────
-  const { data: categories = [] } = useQuery({
+  // Fetch categories for task modal and filters
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["categories", currentOrgId],
-    queryFn: async (): Promise<Category[]> => {
+    queryFn: async () => {
       const token = await getToken()
       const res = await fetch(`${API_BASE_URL}/organizations/${currentOrgId}/categories`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -182,10 +182,17 @@ export default function TasksPage() {
       const url = editingTask
         ? `${API_BASE_URL}/organizations/${currentOrgId}/tasks/${editingTask.id}`
         : `${API_BASE_URL}/organizations/${currentOrgId}/tasks`
+      // Clean empty strings to null for nullable fields
+      const payload = {
+        ...data,
+        category_id: data.category_id || undefined,
+        deadline_at: data.deadline_at || undefined,
+        description: data.description || undefined,
+      }
       const res = await fetch(url, {
         method: editingTask ? "PUT" : "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) throw new Error("Failed to save task")
     },

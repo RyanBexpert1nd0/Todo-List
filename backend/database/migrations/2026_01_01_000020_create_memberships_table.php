@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('memberships', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('user_id');
-            $table->uuid('organization_id');
+            $table->string('organization_id');
             $table->string('role')->default('member'); // admin, member
             $table->timestamps();
 

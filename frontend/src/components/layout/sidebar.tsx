@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { UserButton, useUser, useAuth } from "@clerk/nextjs"
+import { UserButton, useUser, useAuth, useClerk } from "@clerk/nextjs"
 import { cn } from "@/lib/utils"
 import {
   LayoutDashboard,
@@ -10,6 +10,8 @@ import {
   Tag,
   Bell,
   ChevronLeft,
+  Menu,
+  LogOut,
 } from "lucide-react"
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -21,6 +23,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const { user } = useUser()
   const { getToken } = useAuth()
+  const { signOut } = useClerk()
   const [collapsed, setCollapsed] = useState(false)
 
   // Fetch unread notification count
@@ -46,6 +49,16 @@ export function Sidebar() {
     { href: "/categories",    label: "Categories",    icon: Tag,             badge: 0 },
     { href: "/notifications", label: "Notifications", icon: Bell,            badge: unreadCount },
   ]
+
+  const isDemoMode = !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.includes("placeholder")
+
+  const handleSignOut = async () => {
+    if (isDemoMode) {
+      window.location.href = "/"
+    } else {
+      await signOut({ redirectUrl: "/" })
+    }
+  }
 
   return (
     <aside
@@ -106,21 +119,72 @@ export function Sidebar() {
       </nav>
 
       {/* User section */}
-      <div className={cn("border-t border-zinc-800/60 p-3", collapsed ? "flex justify-center" : "")}>
-        {!collapsed ? (
-          <div className="flex items-center gap-3 rounded-lg p-2 hover:bg-zinc-800/60 transition-colors">
-            <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "h-8 w-8" } }} />
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-zinc-200 truncate">
-                {user?.firstName} {user?.lastName}
-              </p>
-              <p className="text-xs text-zinc-500 truncate">
-                {user?.primaryEmailAddress?.emailAddress}
-              </p>
-            </div>
-          </div>
+      <div className={cn("border-t border-zinc-800/60 p-3", collapsed ? "flex flex-col items-center gap-2" : "space-y-2")}>
+        {isDemoMode ? (
+          /* Demo Mode Custom Profile & Log out Button */
+          <>
+            {!collapsed ? (
+              <div className="flex flex-col gap-2 w-full">
+                <div className="flex items-center gap-3 rounded-lg p-2 bg-zinc-900/50 border border-zinc-800/50">
+                  <div className="h-8 w-8 rounded-full bg-violet-600 flex items-center justify-center font-bold text-white text-sm select-none">
+                    D
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-zinc-200 truncate">Demo User</p>
+                    <p className="text-xs text-zinc-500 truncate">demo@collabtodo.local</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200"
+                >
+                  <LogOut className="h-5 w-5 flex-shrink-0" />
+                  <span>Log out (Demo)</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleSignOut}
+                className="h-9 w-9 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center justify-center transition-colors"
+                title="Log out (Demo)"
+              >
+                <LogOut className="h-5 w-5" />
+              </button>
+            )}
+          </>
         ) : (
-          <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "h-8 w-8" } }} />
+          /* Normal Clerk User Button & Custom Log Out Button below it */
+          <div className="flex flex-col gap-2 w-full">
+            {!collapsed ? (
+              <>
+                <div className="flex items-center gap-3 rounded-lg p-2 hover:bg-zinc-800/60 transition-colors">
+                  <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "h-8 w-8" } }} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-zinc-200 truncate">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-xs text-zinc-500 truncate">{user?.primaryEmailAddress?.emailAddress}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleSignOut}
+                  className="w-full text-left flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 transition-all duration-200"
+                >
+                  <LogOut className="h-5 w-5 flex-shrink-0" />
+                  <span>Log out</span>
+                </button>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-2">
+                <UserButton afterSignOutUrl="/" appearance={{ elements: { avatarBox: "h-8 w-8" } }} />
+                <button
+                  onClick={handleSignOut}
+                  className="h-9 w-9 rounded-lg text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60 flex items-center justify-center transition-colors"
+                  title="Log out"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
