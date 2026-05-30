@@ -87,7 +87,7 @@ export default function CategoriesPage() {
         {categories?.map((category) => (
           <div key={category.id} className="group relative rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 transition-all hover:border-zinc-700 hover:shadow-lg">
             <div className="flex items-center gap-3 mb-3">
-              <div className="h-4 w-4 rounded-full flex-shrink-0 ring-2 ring-offset-2 ring-offset-zinc-900" style={{ backgroundColor: category.color, ringColor: category.color }} />
+              <div className="h-4 w-4 rounded-full flex-shrink-0" style={{ backgroundColor: category.color, boxShadow: `0 0 0 2px #18181b, 0 0 0 4px ${category.color}` }} />
               <h3 className="font-semibold text-zinc-100 truncate">{category.name}</h3>
             </div>
             <div className="flex items-center justify-between">
