@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\WebhookController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -14,6 +15,9 @@ use Illuminate\Support\Facades\Route;
 
 // Health check
 Route::get('/health', fn() => response()->json(['status' => 'ok', 'timestamp' => now()]));
+
+// Clerk webhook (no auth — verified by Svix signature)
+Route::post('/webhooks/clerk', [WebhookController::class, 'clerk']);
 
 Route::middleware('clerk.auth')->group(function () {
     // Organization-scoped routes

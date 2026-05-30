@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { PRIORITY_CONFIG, STATUS_CONFIG } from "@/lib/constants"
 import { Calendar, CheckCircle2, Circle, Clock, User, MessageSquare, Pencil, Trash2 } from "lucide-react"
-import { format, formatDistanceToNow, isPast } from "date-fns"
+import { format, isPast } from "date-fns"
 
 interface TaskCardProps {
   task: Task
@@ -74,6 +74,11 @@ export function TaskCard({ task, onToggle, onEdit, onDelete }: TaskCardProps) {
             >
               {PRIORITY_CONFIG[task.priority].label}
             </Badge>
+            {task.status === "in_progress" && (
+              <Badge variant="outline" className={cn("text-xs", STATUS_CONFIG.in_progress.color)}>
+                In Progress
+              </Badge>
+            )}
             {isOverdue && (
               <Badge variant="outline" className="text-xs bg-rose-500/20 text-rose-400 border-rose-500/30">
                 Overdue
