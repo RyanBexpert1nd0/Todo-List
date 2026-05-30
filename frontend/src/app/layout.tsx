@@ -31,7 +31,8 @@ export default function RootLayout({
   const content = (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased suppressHydrationWarning`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-zinc-950 text-zinc-50">
         <Providers>

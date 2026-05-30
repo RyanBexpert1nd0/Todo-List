@@ -27,21 +27,15 @@ class ClerkAuthMiddleware
             $jwksUrl = env('CLERK_JWKS_URL');
 
             if ($jwksUrl) {
-                // Proper Verification with JWKS (Requires firebase/php-jwt and guzzlehttp/guzzle)
-                $httpClient = new Client();
-                $httpFactory = new HttpFactory();
-                $cacheItemPool = Cache::psr16();
-                
-                $jwks = new CachedKeySet(
-                    $jwksUrl,
-                    $httpClient,
-                    $httpFactory,
-                    $cacheItemPool,
-                    300, // cache 5 minutes
-                    true
-                );
+                // Proper Verification with JWKS cached using Laravel's native cache
+                $jwksData = Cache::remember('clerk_jwks', 300, function () use ($jwksUrl) {
+                    $httpClient = new Client();
+                    $response = $httpClient->get($jwksUrl);
+                    return json_decode($response->getBody()->getContents(), true);
+                });
 
-                $decoded = JWT::decode($token, $jwks);
+                $keys = \Firebase\JWT\JWK::parseKeySet($jwksData);
+                $decoded = JWT::decode($token, $keys);
                 $userId = $decoded->sub;
             } else {
                 // Fallback Development Mode: Decode without verification if JWKS_URL is missing
@@ -62,11 +56,42 @@ class ClerkAuthMiddleware
             // Bind user ID to request
             $request->headers->set('X-Clerk-User-Id', $userId);
 
-            // Optional: Find user in DB and authenticate them via Laravel Auth guard
+            // Find or create user in DB
             $user = \App\Models\User::where('clerk_id', $userId)->first();
-            if ($user) {
-                \Illuminate\Support\Facades\Auth::login($user);
+            if (!$user) {
+                $email = $decoded->email ?? ($decoded->email_address ?? $userId . '@clerk.local');
+                $name = $decoded->name ?? ($decoded->username ?? 'User ' . substr($userId, -6));
+                
+                $user = \App\Models\User::create([
+                    'clerk_id' => $userId,
+                    'name' => $name,
+                    'email' => $email,
+                ]);
             }
+
+            // Find or create organization in DB if in route
+            $orgId = $request->route('org');
+            if ($orgId) {
+                \App\Models\Organization::firstOrCreate(
+                    ['id' => $orgId],
+                    [
+                        'clerk_org_id' => $orgId,
+                        'name' => 'Org ' . ($orgId === 'org_placeholder_123' ? 'Demo' : substr($orgId, -6)),
+                        'slug' => $orgId,
+                    ]
+                );
+
+                // Ensure membership exists
+                \App\Models\Membership::firstOrCreate([
+                    'user_id' => $user->id,
+                    'organization_id' => $orgId,
+                ], [
+                    'role' => 'admin',
+                ]);
+            }
+
+            // Authenticate user via Laravel Auth guard
+            \Illuminate\Support\Facades\Auth::login($user);
 
         } catch (\Exception $e) {
             return response()->json([

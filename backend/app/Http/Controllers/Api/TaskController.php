@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Task;
+use App\Models\User;
 use App\Models\Organization;
 use App\Events\TaskCreated;
 use App\Events\TaskUpdated;
@@ -11,6 +12,7 @@ use App\Events\TaskDeleted;
 use App\Events\TasksReordered;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 
 class TaskController extends Controller
 {
@@ -79,10 +81,17 @@ class TaskController extends Controller
         // Get max sort_order for the org
         $maxOrder = Task::forOrganization($orgId)->max('sort_order') ?? 0;
 
+        // Get the authenticated user's DB UUID (set by ClerkAuthMiddleware)
+        $authUser = Auth::user();
+        if (!$authUser) {
+            $clerkUserId = $request->header('X-Clerk-User-Id');
+            $authUser = User::where('clerk_id', $clerkUserId)->first();
+        }
+
         $task = Task::create([
             ...$validated,
             'organization_id' => $orgId,
-            'created_by'      => $request->user()?->id ?? $request->header('X-Clerk-User-Id'),
+            'created_by'      => $authUser->id,
             'sort_order'      => $maxOrder + 1000,
         ]);
 

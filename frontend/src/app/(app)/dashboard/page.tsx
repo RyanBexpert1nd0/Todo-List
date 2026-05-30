@@ -7,6 +7,7 @@ import { API_BASE_URL, PRIORITY_CONFIG } from "@/lib/constants"
 import { DashboardStats, WeeklyProgress, Task } from "@/types"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { useState, useEffect } from "react"
 
 const FALLBACK_ORG_ID = "org_placeholder_123"
 
@@ -36,6 +37,13 @@ export default function DashboardPage() {
   const { user } = useUser()
   const currentOrgId = orgId || FALLBACK_ORG_ID
 
+  // Client-only greeting to avoid hydration mismatch
+  const [greeting, setGreeting] = useState("morning")
+  useEffect(() => {
+    const h = new Date().getHours()
+    setGreeting(h < 12 ? "morning" : h < 17 ? "afternoon" : "evening")
+  }, [])
+
   const { data, isLoading, error } = useQuery<DashboardData>({
     queryKey: ["dashboard", currentOrgId],
     queryFn: async () => {
@@ -63,7 +71,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-white">
-          Good {new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening"},{" "}
+          Good {greeting},{" "}
           <span className="text-violet-400">{user?.firstName ?? "there"}</span> 👋
         </h1>
         <p className="text-zinc-400 mt-1 text-sm">Here's what's happening with your team today.</p>
